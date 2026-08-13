@@ -1,0 +1,44 @@
+name: Atualizar Dados do Futebol
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: 📥 Baixar código
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: 🚀 Gerar dados
+        run: node scripts/atualizar.js
+      
+      - name: 📤 Enviar para JSONBin
+        env:
+          JSONBIN_API_KEY: ${{ secrets.JSONBIN_API_KEY }}
+          JSONBIN_BIN_ID: ${{ secrets.JSONBIN_BIN_ID }}
+        run: |
+          DADOS=$(cat dados/dados.json)
+          curl -X PUT \
+            -H "Content-Type: application/json" \
+            -H "X-Master-Key: $JSONBIN_API_KEY" \
+            -d "$DADOS" \
+            "https://api.jsonbin.io/v3/b/$JSONBIN_BIN_ID"
+      
+      - name: 💾 Salvar no repositório
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add dados/dados.json
+          git commit -m "🔄 Atualização automática" || echo "Sem alterações"
+          git push || echo "Sem alterações"
